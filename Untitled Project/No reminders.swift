@@ -63,10 +63,10 @@ struct NoReminders: View {
 
                         // MARK: Progress Bar
 
-                        VStack(spacing: 10) {
+                        VStack(spacing: 14) {
 
                             Text(vm.statusText)
-                                .font(.system(size: 13))
+                                .font(.system(size: 17))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
 
@@ -87,7 +87,8 @@ struct NoReminders: View {
                             .frame(height: 5)
                         }
                         .padding(.horizontal, 20)
-                        .padding(.vertical, 16)
+                        .padding(.top, 34)       // من الدايدر لين النص
+                        .padding(.bottom, 45)    // من البار لين أول نبتة
                         .animation(.easeInOut, value: vm.checkedIDs)
 
                         // MARK: List (سحب لليسار للحذف)
@@ -227,44 +228,38 @@ struct NoReminders: View {
 
                 HStack {
 
-                    VStack(alignment: .leading, spacing: 7) {
+                    VStack(alignment: .leading, spacing: 6) {
 
                         HStack(spacing: 5) {
 
                             Image(systemName: "paperplane")
-                                .font(.system(size: 10))
+                                .font(.system(size: 12))
 
                             Text("in \(reminder.room)")
-                                .font(.system(size: 11))
+                                .font(.system(size: 14))
                         }
                         .foregroundColor(
-                            .white.opacity(isChecked ? 0.45 : 0.25)
+                            .white.opacity(isChecked ? 0.25 : 0.5)
                         )
 
                         Text(reminder.plantName)
-                            .font(.system(size: 19, weight: .medium))
+                            .font(.system(size: 24, weight: .medium))
                             .foregroundColor(
-                                isChecked ? .white : .white.opacity(0.4)
+                                isChecked ? .white.opacity(0.4) : .white
                             )
 
-                        HStack(spacing: 6) {
+                        HStack(spacing: 8) {
 
                             detailTag(
-                                icon: "sun.max",
+                                icon: vm.lightIcon(for: reminder),
                                 text: reminder.light,
-                                active: isChecked
+                                active: !isChecked
                             )
 
                             detailTag(
                                 icon: "drop",
                                 text: reminder.water,
-                                active: isChecked
-                            )
-
-                            detailTag(
-                                icon: "calendar",
-                                text: reminder.wateringDays,
-                                active: isChecked
+                                active: !isChecked
                             )
                         }
                     }
@@ -277,11 +272,38 @@ struct NoReminders: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 20)
-        .padding(.vertical, 13)
+        .padding(.vertical, 11)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(Color.white.opacity(0.10))
                 .frame(height: 1)
+        }
+    }
+
+    // MARK: - Icon Colors (الشمس صفراء والمويا زرقاء)
+
+    private let sunColor = Color(red: 255/255.0, green: 214/255.0, blue: 10/255.0)
+    private let waterColor = Color(red: 100/255.0, green: 210/255.0, blue: 255/255.0)
+
+    private func iconColor(for icon: String, active: Bool) -> Color {
+        switch icon {
+        case "sun.max", "sun.horizon", "moon":
+            return sunColor.opacity(active ? 1 : 0.5)
+        case "drop":
+            return waterColor.opacity(active ? 1 : 0.5)
+        default:
+            return .white.opacity(active ? 0.65 : 0.3)
+        }
+    }
+
+    private func textColor(for icon: String, active: Bool) -> Color {
+        switch icon {
+        case "sun.max", "sun.horizon", "moon":
+            return sunColor.opacity(active ? 1 : 0.5)
+        case "drop":
+            return waterColor.opacity(active ? 1 : 0.5)
+        default:
+            return .white.opacity(active ? 1 : 0.4)
         }
     }
 
@@ -296,15 +318,17 @@ struct NoReminders: View {
         HStack(spacing: 4) {
 
             Image(systemName: icon)
-                .font(.system(size: 9))
+                .font(.system(size: 12))
+                .foregroundColor(iconColor(for: icon, active: active))
 
             Text(text)
-                .font(.system(size: 9))
+                .font(.system(size: 12))
+                .foregroundColor(textColor(for: icon, active: active))
                 .lineLimit(1)
         }
         .foregroundColor(.white.opacity(active ? 0.65 : 0.3))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
         .background(
             Color(
                 red: 35/255.0,

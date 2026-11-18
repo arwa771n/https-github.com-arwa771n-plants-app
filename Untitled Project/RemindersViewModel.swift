@@ -117,6 +117,17 @@ final class RemindersViewModel {
         NotificationManager.shared.cancel(reminder)
     }
 
+    // MARK: - Presentation Helpers
+
+    /// أيقونة خيار الضوء (Full sun / Partial sun / Low light)
+    func lightIcon(for reminder: PlantReminder) -> String {
+        switch reminder.light.lowercased() {
+        case "partial sun": return "sun.horizon"
+        case "low light":   return "moon"
+        default:            return "sun.max"
+        }
+    }
+
     // MARK: - Notifications
 
     func rescheduleNotifications() {
