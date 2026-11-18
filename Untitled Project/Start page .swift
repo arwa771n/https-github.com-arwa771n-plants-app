@@ -14,100 +14,89 @@ struct StartPage: View {
 
     var body: some View {
 
-        GeometryReader { geometry in
+        VStack(spacing: 0) {
 
-            VStack(spacing: 0) {
+            // MARK: Header
+
+            HStack {
+                Text("My Plants 🌱")
+                    .font(.system(size: 32, weight: .bold))
+                    .foregroundColor(.white)
+
+                Spacer()
+            }
+            .padding(.horizontal, 16)
+            .frame(height: 73)
+
+            Rectangle()
+                .fill(Color.white.opacity(0.10))
+                .frame(height: 1)
+
+            // MARK: Mascot
+
+            Image("PlantMascot")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 205, height: 212)
+                .padding(.top, 58)
+
+            // MARK: Title
+
+            Text("Start your plant journey!")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundColor(.white)
+                .padding(.top, 20)
+
+            // MARK: Subtitle
+
+            Text("Now all your plants will be in one place and\nwe will help you take care of them :)🪴")
+                .font(.system(size: 15))
+                .foregroundColor(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+                .padding(.top, 23)
+
+            // MARK: Button
+
+            Button {
+                activateReminder()
+            } label: {
 
                 HStack {
-                    Text("My Plants 🌱")
-                        .font(.system(size: 23, weight: .bold))
-                        .foregroundColor(.white)
-
-                    Spacer()
-                }
-                .padding(.horizontal, 16)
-                .frame(height: 60)
-
-                Rectangle()
-                    .fill(Color.white.opacity(0.10))
-                    .frame(height: 1)
-
-                VStack(spacing: 0) {
-
-                    Spacer()
-                        .frame(height: geometry.size.height * 0.055)
-
-                    Image("PlantMascot")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 150, height: 155)
-
-                    Text("Start your plant journey!")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.top, 22)
-
-                    Text("""
-                    Now all your plants will be in one place and
-                    we will help you take care of them! 🌱🪴
-                    """)
-                    .font(.system(size: 12))
-                    .foregroundColor(.white.opacity(0.55))
-                    .multilineTextAlignment(.center)
-                    .lineSpacing(2)
-                    .padding(.top, 17)
-
-                    Button {
-                        activateReminder()
-                    } label: {
-
-                        HStack {
-                            if isSettingReminder {
-                                ProgressView()
-                                    .tint(.white)
-                            } else {
-                                Text("Set Plant Reminder")
-                                    .font(.system(
-                                        size: 13,
-                                        weight: .semibold
-                                    ))
-                            }
-                        }
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 46)
-                        .background(
-                            LinearGradient(
-                                colors: [
-                                    greenColor,
-                                    Color(
-                                        red: 27/255.0,
-                                        green: 112/255.0,
-                                        blue: 91/255.0
-                                    )
-                                ],
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                        .clipShape(Capsule())
+                    if isSettingReminder {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Text("Set Plant Reminder")
+                            .font(.system(size: 15, weight: .semibold))
                     }
-                    .buttonStyle(.plain)
-                    .disabled(isSettingReminder)
-                    .padding(.horizontal, 52)
-                    .padding(.top, 72)
-
-                    Spacer()
                 }
-
-                Spacer(minLength: 0)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .background(
+                    LinearGradient(
+                        colors: [
+                            greenColor,
+                            Color(
+                                red: 27/255.0,
+                                green: 112/255.0,
+                                blue: 91/255.0
+                            )
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .clipShape(Capsule())
             }
-            .frame(
-                width: geometry.size.width,
-                height: geometry.size.height
-            )
-            .background(Color.black)
+            .buttonStyle(.plain)
+            .disabled(isSettingReminder)
+            .padding(.horizontal, 68)
+            .padding(.top, 94)
+
+            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
     }
@@ -118,7 +107,6 @@ struct StartPage: View {
 
         isSettingReminder = true
 
-        // ✅ جديد: نطلب الصلاحية فقط، والجدولة تصير من SetReminder
         NotificationManager.shared.requestPermission { _ in
             onContinue()
         }
