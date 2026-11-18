@@ -1,34 +1,16 @@
 import SwiftUI
 
-struct PlantReminder: Identifiable, Codable {
-    var id = UUID()
-    var plantName: String
-    var wateringDays: String
-    var room: String
-    var light: String
-    var water: String
-    var startDate: Date? = nil   // ✅ جديد
-}
-
 struct SetReminder: View {
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(RemindersViewModel.self) private var list
 
-    @AppStorage("savedPlantReminders")
-    private var savedPlantReminders = ""
+    @State private var vm: SetReminderViewModel
 
-    // لو فيه نبتة معناه وضع التعديل
-    var editingReminder: PlantReminder? = nil
-
-    @State private var plantName = ""
-    @State private var wateringDays = "Every day"
-    @State private var room = "Bedroom"
-    @State private var light = "Full sun"
-    @State private var water = "20-50 ml"
-
-    @State private var showNameAlert = false
-
-    private var isEditing: Bool { editingReminder != nil }
+    // نفس الاستدعاء القديم: SetReminder() أو SetReminder(editingReminder: x)
+    init(editingReminder: PlantReminder? = nil) {
+        _vm = State(initialValue: SetReminderViewModel(editing: editingReminder))
+    }
 
     // MARK: - Colors
 
@@ -49,38 +31,6 @@ struct SetReminder: View {
         green: 139/255.0,
         blue: 111/255.0
     )
-
-    // MARK: - Options
-
-    private let wateringOptions = [
-        "Every day",
-        "Every 2 days",
-        "Every 3 days",
-        "Once a week",
-        "Every 10 days",
-        "Every 2 weeks"
-    ]
-
-    private let roomOptions = [
-        "Bedroom",
-        "Living Room",
-        "Kitchen",
-        "Balcony",
-        "Bathroom"
-    ]
-
-    private let lightOptions = [
-        "Full sun",
-        "Partial sun",
-        "Low light"
-    ]
-
-    private let waterOptions = [
-        "20-50 ml",
-        "50-100 ml",
-        "100-200 ml",
-        "200-300 ml"
-    ]
 
     // MARK: - Body
 
@@ -107,14 +57,16 @@ struct SetReminder: View {
 
                     Spacer()
 
-                    Text(isEditing ? "Edit Reminder" : "Set Reminder")
+                    Text(vm.isEditing ? "Edit Reminder" : "Set Reminder")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(.white)
 
                     Spacer()
 
                     Button {
-                        saveReminder()
+                        if vm.save(to: list) {
+                            dismiss()
+                        }
                     } label: {
                         Image(systemName: "checkmark")
                             .font(.system(size: 20, weight: .semibold))
@@ -137,7 +89,7 @@ struct SetReminder: View {
 
                         TextField(
                             "",
-                            text: $plantName,
+                            text: $vm.plantName,
                             prompt: Text("Plant Name")
                                 .foregroundColor(.white.opacity(0.85))
                         )
@@ -166,8 +118,8 @@ struct SetReminder: View {
                         SelectionRow(
                             icon: "paperplane",
                             title: "Room",
-                            selection: $room,
-                            options: roomOptions
+                            selection: $vm.room,
+                            options: vm.roomOptions
                         )
 
                         Divider()
@@ -177,8 +129,8 @@ struct SetReminder: View {
                         SelectionRow(
                             icon: "sun.max",
                             title: "Light",
-                            selection: $light,
-                            options: lightOptions
+                            selection: $vm.light,
+                            options: vm.lightOptions
                         )
                     }
                     .background(cardColor)
@@ -193,8 +145,8 @@ struct SetReminder: View {
                         SelectionRow(
                             icon: "drop",
                             title: "Watering Days",
-                            selection: $wateringDays,
-                            options: wateringOptions
+                            selection: $vm.wateringDays,
+                            options: vm.wateringOptions
                         )
 
                         Divider()
@@ -204,8 +156,8 @@ struct SetReminder: View {
                         SelectionRow(
                             icon: "drop",
                             title: "Water",
-                            selection: $water,
-                            options: waterOptions
+                            selection: $vm.water,
+                            options: vm.waterOptions
                         )
                     }
                     .background(cardColor)
@@ -215,9 +167,10 @@ struct SetReminder: View {
 
                     // Delete Reminder (وضع التعديل فقط)
 
-                    if isEditing {
+                    if vm.isEditing {
                         Button {
-                            deleteReminder()
+                            vm.delete(from: list)
+                            dismiss()
                         } label: {
                             Text("Delete Reminder")
                                 .font(.system(size: 14))
@@ -245,114 +198,11 @@ struct SetReminder: View {
         .background(backgroundColor.ignoresSafeArea())
         .preferredColorScheme(.dark)
         .toolbar(.hidden, for: .navigationBar)
-        .onAppear {
-            if let r = editingReminder {
-                plantName = r.plantName
-                wateringDays = r.wateringDays
-                room = r.room
-                light = r.light
-                water = r.water
-            }
-        }
-        .alert("Plant Name Required", isPresented: $showNameAlert) {
+        .alert("Plant Name Required", isPresented: $vm.showNameAlert) {
             Button("OK", role: .cancel) { }
         } message: {
             Text("Please enter your plant name before saving.")
         }
-    }
-
-    // MARK: - Save Reminder
-
-    private func saveReminder() {
-
-        let trimmedName = plantName.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-
-        guard !trimmedName.isEmpty else {
-            showNameAlert = true
-            return
-        }
-
-        var reminders = loadReminders()
-        var saved: PlantReminder   // ✅ جديد
-
-        if let editing = editingReminder,
-           let index = reminders.firstIndex(where: { $0.id == editing.id }) {
-
-            // ✅ جديد: إذا تغير التكرار نبدأ العد من اليوم
-            if reminders[index].wateringDays != wateringDays {
-                reminders[index].startDate = Date()
-            }
-
-            // تعديل النبتة الموجودة بنفس الـ id
-            reminders[index].plantName = trimmedName
-            reminders[index].wateringDays = wateringDays
-            reminders[index].room = room
-            reminders[index].light = light
-            reminders[index].water = water
-            saved = reminders[index]
-
-        } else {
-
-            let newReminder = PlantReminder(
-                plantName: trimmedName,
-                wateringDays: wateringDays,
-                room: room,
-                light: light,
-                water: water,
-                startDate: Date()
-            )
-
-            reminders.append(newReminder)
-            saved = newReminder
-        }
-
-        if persist(reminders) {
-            NotificationManager.shared.schedule(saved)   // ✅ جديد
-            dismiss()
-        }
-    }
-
-    // MARK: - Delete Reminder
-
-    private func deleteReminder() {
-
-        guard let editing = editingReminder else { return }
-
-        var reminders = loadReminders()
-        reminders.removeAll { $0.id == editing.id }
-
-        if persist(reminders) {
-            NotificationManager.shared.cancel(editing)   // ✅ جديد
-            dismiss()
-        }
-    }
-
-    // MARK: - Storage Helpers
-
-    private func loadReminders() -> [PlantReminder] {
-
-        guard let data = savedPlantReminders.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode(
-                [PlantReminder].self,
-                from: data
-              ) else {
-            return []
-        }
-
-        return decoded
-    }
-
-    private func persist(_ reminders: [PlantReminder]) -> Bool {
-
-        guard let encoded = try? JSONEncoder().encode(reminders),
-              let json = String(data: encoded, encoding: .utf8) else {
-            return false
-        }
-
-        savedPlantReminders = json
-        return true
     }
 }
 
@@ -429,7 +279,7 @@ struct SelectionRow: View {
                         Image(systemName: "checkmark")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundColor(.white)
-                            .opacity(option == selection ? 1 : 0) // يحجز المكان
+                            .opacity(option == selection ? 1 : 0)
                     }
                     .padding(.horizontal, 16)
                     .padding(.vertical, 11)
@@ -449,5 +299,6 @@ struct SelectionRow: View {
 #Preview {
     NavigationStack {
         SetReminder()
+            .environment(RemindersViewModel())
     }
 }

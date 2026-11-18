@@ -4,7 +4,7 @@ struct StartPage: View {
 
     var onContinue: () -> Void
 
-    @State private var isSettingReminder = false
+    @State private var vm = StartViewModel()
 
     private let greenColor = Color(
         red: 38/255.0,
@@ -58,11 +58,13 @@ struct StartPage: View {
             // MARK: Button
 
             Button {
-                activateReminder()
+                vm.requestPermission {
+                    onContinue()
+                }
             } label: {
 
                 HStack {
-                    if isSettingReminder {
+                    if vm.isSettingReminder {
                         ProgressView()
                             .tint(.white)
                     } else {
@@ -90,7 +92,7 @@ struct StartPage: View {
                 .clipShape(Capsule())
             }
             .buttonStyle(.plain)
-            .disabled(isSettingReminder)
+            .disabled(vm.isSettingReminder)
             .padding(.horizontal, 68)
             .padding(.top, 94)
 
@@ -99,17 +101,6 @@ struct StartPage: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.ignoresSafeArea())
         .preferredColorScheme(.dark)
-    }
-
-    // MARK: - Reminder Permission
-
-    private func activateReminder() {
-
-        isSettingReminder = true
-
-        NotificationManager.shared.requestPermission { _ in
-            onContinue()
-        }
     }
 }
 

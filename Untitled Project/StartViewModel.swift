@@ -1,18 +1,17 @@
-//
-//  StartViewModel.swift
-//  plants app
-//
-//  Created by arwa1122 on 08/06/1448 AH.
-//
+import Foundation
+import Observation
 
-import SwiftUI
+@Observable
+final class StartViewModel {
 
-struct StartViewModel: View {
-    var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+    var isSettingReminder = false
+
+    func requestPermission(completion: @escaping () -> Void) {
+
+        isSettingReminder = true
+
+        NotificationManager.shared.requestPermission { _ in
+            completion()
+        }
     }
-}
-
-#Preview {
-    StartViewModel()
 }

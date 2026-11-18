@@ -2,71 +2,10 @@ import SwiftUI
 
 struct TodayReminderView: View {
 
-    // نفس المفتاح المستخدم في NoReminders
-    @AppStorage("savedPlantReminders") private var savedPlantReminders: String = ""
-
-    // النبتات اللي انسقت اليوم (تتخزن وتتصفر كل يوم)
-    @AppStorage("checkedPlantIDs") private var checkedPlantIDs: String = ""
-    @AppStorage("checkedDate") private var checkedDate: String = ""
+    @Environment(RemindersViewModel.self) private var vm
 
     private let backgroundColor = Color.black
     private let greenColor = Color(red: 38/255.0, green: 139/255.0, blue: 111/255.0)
-
-    // MARK: - Data
-
-    private var reminders: [PlantReminder] {
-        guard let data = savedPlantReminders.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode([PlantReminder].self, from: data)
-        else { return [] }
-        return decoded
-    }
-
-    private var checkedIDs: Set<String> {
-        guard let data = checkedPlantIDs.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode(Set<String>.self, from: data)
-        else { return [] }
-        return decoded
-    }
-
-    private func saveChecked(_ ids: Set<String>) {
-        if let data = try? JSONEncoder().encode(ids),
-           let string = String(data: data, encoding: .utf8) {
-            checkedPlantIDs = string
-        }
-    }
-
-    private func toggle(_ plant: PlantReminder) {
-        var ids = checkedIDs
-        let key = plant.id.uuidString
-        if ids.contains(key) { ids.remove(key) } else { ids.insert(key) }
-        saveChecked(ids)
-    }
-
-    // يصفّر الاختيار إذا تغير اليوم
-    private func resetIfNewDay() {
-        let today = Date().formatted(.iso8601.year().month().day())
-        if checkedDate != today {
-            checkedDate = today
-            checkedPlantIDs = ""
-        }
-    }
-
-    // MARK: - Progress
-
-    private var checkedCount: Int {
-        reminders.filter { checkedIDs.contains($0.id.uuidString) }.count
-    }
-
-    private var progress: Double {
-        guard !reminders.isEmpty else { return 0 }
-        return Double(checkedCount) / Double(reminders.count)
-    }
-
-    private var statusText: String {
-        checkedCount == 0
-        ? "Your plants are waiting for a sip 💦"
-        : "\(checkedCount) of your plants feel loved today ✨"
-    }
 
     // MARK: - Body
 
@@ -85,7 +24,7 @@ struct TodayReminderView: View {
 
                 // البار
                 VStack(spacing: 10) {
-                    Text(statusText)
+                    Text(vm.statusText)
                         .font(.subheadline)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
@@ -95,18 +34,18 @@ struct TodayReminderView: View {
                             Capsule().fill(Color.gray.opacity(0.3))
                             Capsule()
                                 .fill(greenColor)
-                                .frame(width: geo.size.width * progress)
+                                .frame(width: geo.size.width * vm.progress)
                         }
                     }
                     .frame(height: 5)
                 }
                 .padding(.horizontal)
-                .animation(.easeInOut, value: checkedPlantIDs)
+                .animation(.easeInOut, value: vm.checkedIDs)
 
                 // القايمة
                 ScrollView {
                     VStack(spacing: 0) {
-                        ForEach(reminders) { plant in
+                        ForEach(vm.reminders) { plant in
                             plantRow(plant)
                             Divider().background(Color.gray.opacity(0.3))
                         }
@@ -117,16 +56,16 @@ struct TodayReminderView: View {
             }
             .padding(.top)
         }
-        .onAppear(perform: resetIfNewDay)
+        .onAppear { vm.resetIfNewDay() }
     }
 
     // MARK: - Row
 
     private func plantRow(_ plant: PlantReminder) -> some View {
-        let isChecked = checkedIDs.contains(plant.id.uuidString)
+        let isChecked = vm.isChecked(plant)
 
         return Button {
-            toggle(plant)
+            vm.toggle(plant)
         } label: {
             HStack(spacing: 14) {
                 Image(systemName: isChecked ? "checkmark.circle.fill" : "circle")
@@ -167,4 +106,9 @@ struct TodayReminderView: View {
         .background(Color.gray.opacity(0.25))
         .clipShape(Capsule())
     }
+}
+
+#Preview {
+    TodayReminderView()
+        .environment(RemindersViewModel())
 }

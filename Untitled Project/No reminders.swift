@@ -2,20 +2,10 @@ import SwiftUI
 
 struct NoReminders: View {
 
-    @AppStorage("savedPlantReminders")
-    private var savedPlantReminders = ""
+    @Environment(RemindersViewModel.self) private var vm
 
-    // النبتات اللي انسقت اليوم (تتصفر كل يوم)
-    @AppStorage("checkedPlantIDs")
-    private var checkedPlantIDs = ""
-
-    @AppStorage("checkedDate")
-    private var checkedDate = ""
-
-    // النبتة اللي تنعدل (تفتح sheet)
+    // حالة الواجهة فقط (أي sheet مفتوح)
     @State private var editingReminder: PlantReminder? = nil
-
-    // إضافة ريمايندر جديد (تفتح sheet من تحت)
     @State private var showAddReminder = false
 
     private let backgroundColor = Color.black
@@ -25,113 +15,6 @@ struct NoReminders: View {
         green: 139/255.0,
         blue: 111/255.0
     )
-
-    // MARK: - Saved Reminders
-
-    private var reminders: [PlantReminder] {
-
-        guard let data = savedPlantReminders.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode(
-                [PlantReminder].self,
-                from: data
-              ) else {
-            return []
-        }
-
-        return decoded
-    }
-
-    // MARK: - Checked Plants
-
-    private var checkedIDs: Set<String> {
-
-        guard let data = checkedPlantIDs.data(using: .utf8),
-              let decoded = try? JSONDecoder().decode(
-                Set<String>.self,
-                from: data
-              ) else {
-            return []
-        }
-
-        return decoded
-    }
-
-    private func saveChecked(_ ids: Set<String>) {
-
-        if let data = try? JSONEncoder().encode(ids),
-           let string = String(data: data, encoding: .utf8) {
-            checkedPlantIDs = string
-        }
-    }
-
-    private func toggle(_ reminder: PlantReminder) {
-
-        var ids = checkedIDs
-        let key = reminder.id.uuidString
-
-        if ids.contains(key) {
-            ids.remove(key)
-        } else {
-            ids.insert(key)
-        }
-
-        saveChecked(ids)
-    }
-
-    private func resetIfNewDay() {
-
-        let today = Date().formatted(
-            .iso8601.year().month().day()
-        )
-
-        if checkedDate != today {
-            checkedDate = today
-            checkedPlantIDs = ""
-        }
-    }
-
-    private func deleteReminder(_ reminder: PlantReminder) {
-
-        // ✅ جديد: نلغي إشعارات النبتة المحذوفة
-        NotificationManager.shared.cancel(reminder)
-
-        var all = reminders
-        all.removeAll { $0.id == reminder.id }
-
-        if let data = try? JSONEncoder().encode(all),
-           let json = String(data: data, encoding: .utf8) {
-            savedPlantReminders = json
-        }
-
-        // نشيل التشيك حق النبتة المحذوفة
-        var ids = checkedIDs
-        ids.remove(reminder.id.uuidString)
-        saveChecked(ids)
-    }
-
-    // MARK: - Progress
-
-    private var checkedCount: Int {
-        reminders.filter {
-            checkedIDs.contains($0.id.uuidString)
-        }.count
-    }
-
-    private var progress: Double {
-        guard !reminders.isEmpty else { return 0 }
-        return Double(checkedCount) / Double(reminders.count)
-    }
-
-    // true لما كل النباتات تنسقت
-    private var isAllDone: Bool {
-        !reminders.isEmpty && checkedCount == reminders.count
-    }
-
-    private var statusText: String {
-        checkedCount == 0
-        ? "Your plants are waiting for a sip 💦"
-        : "\(checkedCount) of your plants feel loved today ✨"
-    }
 
     // MARK: - Body
 
@@ -162,7 +45,7 @@ struct NoReminders: View {
 
                     // MARK: Content
 
-                    if reminders.isEmpty {
+                    if vm.reminders.isEmpty {
 
                         Spacer()
 
@@ -172,7 +55,7 @@ struct NoReminders: View {
 
                         Spacer()
 
-                    } else if isAllDone {
+                    } else if vm.isAllDone {
 
                         allDoneView
 
@@ -182,7 +65,7 @@ struct NoReminders: View {
 
                         VStack(spacing: 10) {
 
-                            Text(statusText)
+                            Text(vm.statusText)
                                 .font(.system(size: 13))
                                 .foregroundColor(.white)
                                 .frame(maxWidth: .infinity)
@@ -197,7 +80,7 @@ struct NoReminders: View {
                                     Capsule()
                                         .fill(greenColor)
                                         .frame(
-                                            width: barGeo.size.width * progress
+                                            width: barGeo.size.width * vm.progress
                                         )
                                 }
                             }
@@ -205,12 +88,12 @@ struct NoReminders: View {
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 16)
-                        .animation(.easeInOut, value: checkedPlantIDs)
+                        .animation(.easeInOut, value: vm.checkedIDs)
 
                         // MARK: List (سحب لليسار للحذف)
 
                         List {
-                            ForEach(reminders) { reminder in
+                            ForEach(vm.reminders) { reminder in
 
                                 reminderRow(reminder)
                                     .listRowInsets(EdgeInsets())
@@ -221,7 +104,7 @@ struct NoReminders: View {
                                         allowsFullSwipe: true
                                     ) {
                                         Button(role: .destructive) {
-                                            deleteReminder(reminder)
+                                            vm.delete(reminder)
                                         } label: {
                                             Image(systemName: "trash")
                                         }
@@ -274,7 +157,7 @@ struct NoReminders: View {
             .toolbar(.hidden, for: .navigationBar)
         }
         .preferredColorScheme(.dark)
-        .onAppear(perform: resetIfNewDay)
+        .onAppear { vm.resetIfNewDay() }
         .sheet(item: $editingReminder) { reminder in
             SetReminder(editingReminder: reminder)
         }
@@ -317,13 +200,13 @@ struct NoReminders: View {
         _ reminder: PlantReminder
     ) -> some View {
 
-        let isChecked = checkedIDs.contains(reminder.id.uuidString)
+        let isChecked = vm.isChecked(reminder)
 
         return HStack(spacing: 14) {
 
-            // الدايرة: للتشيك (رمادية، وإذا انختارت تصير خضراء)
+            // الدايرة: للتشيك
             Button {
-                toggle(reminder)
+                vm.toggle(reminder)
             } label: {
                 Image(
                     systemName: isChecked
@@ -437,4 +320,5 @@ struct NoReminders: View {
 
 #Preview {
     NoReminders()
+        .environment(RemindersViewModel())
 }

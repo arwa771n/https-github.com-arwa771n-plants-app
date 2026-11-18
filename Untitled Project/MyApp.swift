@@ -8,6 +8,9 @@ struct MyApp: App {
     @AppStorage("hasSeenStartPage")
     private var hasSeenStartPage = false
 
+    // ViewModel واحد مشترك بين كل الشاشات
+    @State private var remindersVM = RemindersViewModel()
+
     init() {
         NotificationManager.shared.configure()
     }
@@ -28,9 +31,11 @@ struct MyApp: App {
                     }
                 }
             }
+            .environment(remindersVM)
             .onChange(of: scenePhase) { _, phase in
                 if phase == .active {
-                    NotificationManager.shared.rescheduleAll()
+                    remindersVM.load()
+                    remindersVM.rescheduleNotifications()
                 }
             }
         }

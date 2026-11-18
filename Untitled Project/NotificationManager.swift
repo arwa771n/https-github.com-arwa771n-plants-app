@@ -8,7 +8,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     private let center = UNUserNotificationCenter.current()
     private let prefix = "plant-"
 
-    // وقت الإشعار كل يوم (غيّره زي ما تبغى)
+    // وقت الإشعار كل يوم
     private let notifyHour = 9
     private let notifyMinute = 0
 
@@ -20,7 +20,6 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     func configure() {
         center.delegate = self
 
-        // نشيل الإشعارات القديمة العامة (اليومي + التجريبي)
         center.removePendingNotificationRequests(
             withIdentifiers: ["PlantDailyReminder", "PlantTestReminder"]
         )
@@ -58,7 +57,7 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
             case .authorized, .provisional, .ephemeral:
                 self.replace(reminder)
             default:
-                break // المستخدم رافض الصلاحية
+                break
             }
         }
     }
@@ -83,23 +82,12 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         }
     }
 
-    // MARK: - Reschedule All (يتنفذ كل ما يفتح التطبيق)
+    // MARK: - Reschedule All (الـ ViewModel يعطيه القائمة)
 
-    func rescheduleAll() {
-
-        var reminders = loadReminders()
-
-        // نبتات قديمة بدون startDate: نعطيها تاريخ مرة وحدة ونحفظه
-        var changed = false
-        for i in reminders.indices where reminders[i].startDate == nil {
-            reminders[i].startDate = Date()
-            changed = true
-        }
-        if changed { saveReminders(reminders) }
+    func rescheduleAll(_ reminders: [PlantReminder]) {
 
         center.getPendingNotificationRequests { pending in
 
-            // نشيل كل إشعارات النباتات (تشمل المحذوفة)
             let ids = pending.map(\.identifier).filter { $0.hasPrefix(self.prefix) }
             self.center.removePendingNotificationRequests(withIdentifiers: ids)
 
@@ -200,28 +188,5 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         case "Every 2 weeks":  return 14
         default:               return 1
         }
-    }
-
-    // MARK: - Storage (نفس مفتاح @AppStorage)
-
-    private let storageKey = "savedPlantReminders"
-
-    private func loadReminders() -> [PlantReminder] {
-        guard
-            let json = UserDefaults.standard.string(forKey: storageKey),
-            let data = json.data(using: .utf8),
-            let decoded = try? JSONDecoder().decode([PlantReminder].self, from: data)
-        else { return [] }
-
-        return decoded
-    }
-
-    private func saveReminders(_ reminders: [PlantReminder]) {
-        guard
-            let data = try? JSONEncoder().encode(reminders),
-            let json = String(data: data, encoding: .utf8)
-        else { return }
-
-        UserDefaults.standard.set(json, forKey: storageKey)
     }
 }
